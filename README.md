@@ -4,8 +4,7 @@ Sistema MVP de quiz desenvolvido para o desafio PSL Legal com foco em RH.
 Link do desafio
 
 Aplicação web
-
-<video width="600" controls> <source src="./demo.mp4" type="video/mp4"> Seu navegador não suporta a tag de vídeo. </video>
+ 
 🛠 Tecnologias
 
 Next.js (TypeScript) → Frontend reativo e performático
@@ -164,6 +163,8 @@ SELECT
 
 🖼 Diagramas
 1️⃣ Fluxo do n8n
+
+
 <img src="./diagrama.n8n.png" alt="Diagrama n8n" width="600" />
 
 Webhooks e Schedule Triggers
@@ -171,6 +172,8 @@ Webhooks e Schedule Triggers
 Integração com Postgres e envio de emails
 
 2️⃣ Modelo de Dados
+
+
 <img src="./diagrama.png" alt="Diagrama ER" width="600" />
 
 Mostra tabelas candidatos, fitscore_perguntas, fitscore_opcoes, fitscore_respostas, fitscore_classificacao e avaliadores
