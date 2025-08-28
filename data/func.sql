@@ -1,68 +1,71 @@
-create or replace function inserir_respostas_e_classificacao(
-  respostas_json json
-)
-returns boolean
-language plpgsql
-as $$
-declare
+
+DECLARE
   candidato uuid;
-  fit_score int := 0;
+  fit_score_calc int := 0;
   classificacao_text text;
-begin
+BEGIN
   -- Pega candidato_id do primeiro item do JSON
   candidato := (respostas_json::jsonb->0->>'candidato_id')::uuid;
 
-  -- Inserir respostas, ignorando duplicadas (mesmo candidato e pergunta)
-  insert into fitscore_respostas (id, candidato_id, pergunta_id, opcao_id, created_at)
-  select
+  -- Inserir respostas, ignorando duplicadas
+  INSERT INTO fitscore_respostas (id, candidato_id, pergunta_id, opcao_id, created_at)
+  SELECT
     gen_random_uuid(),
     (elem->>'candidato_id')::uuid,
     (elem->>'pergunta_id')::uuid,
     (elem->>'opcao_id')::uuid,
     now()
-  from jsonb_array_elements(respostas_json::jsonb) as elem
-  on conflict (candidato_id, pergunta_id) do nothing;
+  FROM jsonb_array_elements(respostas_json::jsonb) AS elem
+  ON CONFLICT (candidato_id, pergunta_id) DO NOTHING;
 
-  raise notice 'Respostas inseridas (duplicadas ignoradas) para o candidato %', candidato;
-
-  -- Calcular fit_score somando pontos das opções válidas
-  select coalesce(sum(o.ponto),0)
-  into fit_score
-  from jsonb_array_elements(respostas_json::jsonb) as r
-  join fitscore_opcoes o
-    on o.id = (r->>'opcao_id')::uuid;
-
-  raise notice 'Fit Score calculado: %', fit_score;
+  -- Calcular fit_score
+  SELECT COALESCE(SUM(o.ponto),0)
+  INTO fit_score_calc
+  FROM jsonb_array_elements(respostas_json::jsonb) AS r
+  JOIN fitscore_opcoes o
+    ON o.id = (r->>'opcao_id')::uuid;
 
   -- Determinar classificação
-  if fit_score >= 80 then
+  IF fit_score_calc >= 80 THEN
     classificacao_text := 'Fit Altíssimo';
-  elsif fit_score >= 60 then
+  ELSIF fit_score_calc >= 60 THEN
     classificacao_text := 'Fit Aprovado';
-  elsif fit_score >= 40 then
+  ELSIF fit_score_calc >= 40 THEN
     classificacao_text := 'Fit Questionável';
-  else
+  ELSE
     classificacao_text := 'Fora do Perfil';
-  end if;
-
-  raise notice 'Classificação determinada: %', classificacao_text;
+  END IF;
 
   -- Inserir classificação caso ainda não exista
-  insert into fitscore_classificacao (candidato_id, fit_score, classificacao, created_at)
-  select candidato, fit_score, classificacao_text, now()
-  where not exists (
-    select 1 from fitscore_classificacao where candidato_id = candidato
+  INSERT INTO fitscore_classificacao (candidato_id, fit_score, classificacao, created_at)
+  SELECT candidato, fit_score_calc, classificacao_text, now()
+  WHERE NOT EXISTS (
+    SELECT 1 FROM fitscore_classificacao WHERE candidato_id = candidato
   );
 
-  raise notice 'Classificação inserida (se não existia) para o candidato %', candidato;
+  -- Atualiza coluna 'conclusao'
+  UPDATE candidatos
+  SET conclusao = true
+  WHERE id = candidato;
 
-  -- Atualiza a coluna 'conclusao' para true (ou 1) no candidato
-  update candidatos
-  set conclusao = true
-  where id = candidato;
+  -- Retorna os dados formatados em JSON
+  RETURN QUERY
+  SELECT json_build_object(
+    'email', c.email,
+    'nome', c.nome,
+    'mensagem_profissional',
+       
+      'Sua pontuação no Fit Score foi: ' || fit_score_calc || ' (' || classificacao_text || ').' || E'\n' ||
+      CASE
+          WHEN fit_score_calc >= 80 THEN 'Parabéns! Seu perfil se destacou como Fit Altíssimo. Continuamos muito animados com suas habilidades!'
+          WHEN fit_score_calc >= 60 THEN 'Ótimo! Seu perfil foi aprovado no Fit Score. Continue desenvolvendo suas competências para alcançar ainda mais oportunidades.'
+          WHEN fit_score_calc >= 40 THEN 'Bom esforço! Seu Fit Score é questionável. Recomendamos continuar aprimorando suas habilidades para melhorar seus resultados futuros.'
+          ELSE 'Não desanime! Seu Fit Score está abaixo do esperado, mas ainda existem muitas oportunidades para crescer e se desenvolver profissionalmente.'
+      END || E'\n\n' ||
+      'Agradecemos sua participação no processo seletivo e esperamos que continue acompanhando nossas oportunidades.'  
+      
+  )
+  FROM candidatos c
+  WHERE c.id = candidato;
 
-  raise notice 'Candidato % finalizado (conclusao = true)', candidato;
-
-  return true;
-end;
-$$;
+END;
