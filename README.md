@@ -1,11 +1,14 @@
 🚀 Mini FitScore
 
 Sistema MVP  Mini FitScore desenvolvido para o desafio PSL Legal com foco em RH.
+
 [Link do desafio](https://desafio-fitscore.lovable.app/#desafio)
+
+
 [URL d Deploy](https://mini-fitscore-peach.vercel.app/)
 
 
-[Ver Video Demonstracao](https://youtu.be/WDUybc5NsK4)
+[Ver Video Demonstracao](https://youtu.be/prTiHlLr27M)
 
 
 Aplicação web
